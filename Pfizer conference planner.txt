@@ -1,0 +1,29 @@
+Pfizer conference planner
+
+conferences span over multiple days
+
+theme has to create individual 
+
+agent to help them maek conference planner
+
+two approaches:
+
+One approach:
+- Agent that goes and parses website of conference, and creates template (eg. vaccines, cancer)
+
+- looks through days of conferences, each has different session, sponsors, time
+
+- capture preferences, go back to website, fetch data, process
+
+
+
+2nd Approach:
+Get data, store in database (vector)
+
+
+
+w/ RAG: Augmented generation
+
+Prompt w/ context
+
+Done by end of June
