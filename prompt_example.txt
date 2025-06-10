@@ -1,0 +1,26 @@
+Some prompts (to give an idea on the nature of queries we can expect from the end user) while we make our agents.  
+ 
+
+Step 1: Congress planning - Presentations
+
+Prompt 1: [insert preferably PDF of all sessions and posters, can do a website but often is not complete  consider copy/paste into a word document if PDF is not available]  Act as if you were a medical vaccine expert. Identify all the posters and lectures that involve vaccines, immunization, immunize, RSV, respiratory syncytial virus, COVID, COVID-19, SARS-CoV2, long COVID, pandemic, pneumococcal, Invasive pneumococcal disease, meningococcal, meningitis, maternal immunization, tick borne encephalitis, TBE, Cdiff, artificial intelligence, digital health, motivational interviewing, vaccine confidence, vaccine hesitancy, infection prevention, preventive medicine, population health, infectious disease, public health, FQHC, federally qualified health centers, Include details of the speaker, title of the lecture or discussion, location of the talk, date and time.
+
+ 
+
+Prompt 2: Formatting: Create a table with this information with the following headers: speaker/moderator, location, time and place, notes it into a word document. Outline each cell with a black box and place it into a word document. For the speaker or moderator also include the place where they work including the name of the institution, their professional title and city/state if available.
+
+ 
+
+Step 2: Poster session
+
+When are poster events in this agenda [insert pdf of schedule – preferred or link – may need to copy and paste into a word document if ineffective] please provide, dates, times and locations. Do not include information on poster setup or poster tear down.
+
+[insert preferably PDF of posters, can do a website but often is not complete -  consider copy/paste into a word document if PDF is not available]  Act as if you were a medical vaccine expert. Identify all the posters and lectures that involve vaccines, immunization, immunize, RSV, respiratory syncytial virus, COVID, COVID-19, SARS-CoV2, long COVID, pandemic, pneumococcal, Invasive pneumococcal disease, meningococcal, meningitis, maternal immunization, tick borne encephalitis, TBE, Cdiff, artificial intelligence, digital health, motivational interviewing, vaccine confidence, vaccine hesitancy, infection prevention, preventive medicine, population health, infectious disease, public health, FQHC, federally qualified health centers, Include details of the speaker, title of the lecture or discussion, location of the talk, date and time.
+
+Prompt 2: Formatting: Create a table with this information with the following headers: author, location, time and place and notes. For the speaker or moderator also include the place where they work including the name of the institution, their professional title and city/state if available. Then create a word document. Outline each cell with a black box and place it into a word document.
+
+ 
+
+Step 3: Networking events
+
+Please find all networking, happy hours and social events within this program. Please provide dates, times and locations. Please include special interest groups.
