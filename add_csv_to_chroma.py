@@ -1,7 +1,6 @@
 import csv
 import chromadb
 from sentence_transformers import SentenceTransformer
-import re
 
 client = chromadb.PersistentClient(path="./chroma_data")
 collection = client.get_or_create_collection(name="session_info")
@@ -33,7 +32,7 @@ def populate_from_csv(path):
                             embeddings=embeddings,
                             ids=[f"session_{i}_{j}" for j in range(len(full_chunks))]
                         )
-                    if i % 100 == 0:
+                    if i % 100 == 0 and i > 0:
                         print(f"Processed session {i}")
                 print("Database population from csv complete.")
     else:
