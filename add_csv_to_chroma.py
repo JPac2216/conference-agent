@@ -39,30 +39,27 @@ def populate_from_csv(path):
     else:
         print("Database already contains data from URLs. Skipping URL population.")
    
-def test_database():
-    """Tests the Chroma database by performing a simple similarity search."""
-    query = "2025-03-22"
+def prompt_database(query):
+    """Prompts the Chroma database by performing a simple similarity search."""
+    query = query
     query_embedding = embedder.encode([query])[0]
     results = collection.query(query_embeddings=[query_embedding], n_results=15)
-    print("\n--- Test Query Results ---")
+    results_list = []
     if results and results['documents'] and results['distances']:
         for i, doc in enumerate(results['documents'][0]):
-            print(doc)
-            print(f"Distance: {results['distances'][0][i]:.4f}")
-
-
-
-            #To search for a date
-            # if re.search(r"\s*Date:\s*2025-03-22", doc):
-            #     print(doc)
-            #     print(f"Distance: {results['distances'][0][i]:.4f}")
+            results_list.append({
+                "text": doc,
+                "score": results['distances'][0][i]
+            })
     else:
-        print("No results found in the database.")
+        results_list.append("No results found in the database.")
+
+    return results_list
 
 
 
 
 if __name__ == "__main__":
     populate_from_csv("apha2025_sessions.csv")
-    test_database()
-
+    query = input("Prompt: ")
+    data = prompt_database(query)
