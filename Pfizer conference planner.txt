@@ -27,3 +27,14 @@ w/ RAG: Augmented generation
 Prompt w/ context
 
 Done by end of June
+
+
+Next Steps: (6/18)
+
+- Implement more tools (Search tool, Table / Docs creation tool)
+- Add other conference webpages 
+
+
+- First name, Last name, Designation (title), Role, Sponsors, IsPreRegisterAllowed, City, State
+
+- Use search tool (Tavily) to find City, State, LinkedIn

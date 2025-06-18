@@ -53,9 +53,9 @@ Description Chunk {desc_count}: {row["Description"][j:j+500]}"""
 #         print("No results found in the database.")
 
 def retriever_tool(query: str) -> str:
-    """This tool searches the Chroma database containing all of the session info and returns the top 15 chunks."""
+    """This tool searches the Chroma database containing all of the session info and returns the top 10 chunks."""
     query_embedding = embedder.encode([query])[0]
-    query_results = collection.query(query_embeddings=[query_embedding], n_results=15)
+    query_results = collection.query(query_embeddings=[query_embedding], n_results=10)
     result = ""
     if query_results and query_results['documents'] and query_results['distances']:
         for i, doc in enumerate(query_results['documents'][0]):

@@ -142,4 +142,4 @@ def running_agent():
         print("\n=== ANSWER ===")
         print(result['messages'][-1].content)
 
-#running_agent()
+running_agent()
