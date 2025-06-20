@@ -5,3 +5,5 @@ chroma_data/
 .env
 
 app.py
+
+apha2025_sessions.csv
