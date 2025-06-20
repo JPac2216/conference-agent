@@ -31,6 +31,29 @@ def main():
         if isinstance(session.get('location'), dict):
             location = session['location'].get('title', '')
 
+        # Handle speaker info
+        presenters = ''
+        professional_titles = ''
+        institutions = ''
+        if isinstance(session.get('speakers'), list):
+            for s in session.get('speakers'):
+                presenters += f"{s.get('firstName', '')} {s.get('lastName', '')}; "
+                professional_titles += f"{s.get('title', '')}; "
+                institutions += f"{s.get('company', '')}; "
+
+        presenters = presenters[:-2]
+        professional_titles = professional_titles[:-2]
+        institutions = institutions[:-2]
+
+        #Handle sponsor info
+        sponsors = ''
+        if isinstance(session.get('sponsors'), list):
+            for s in session.get('sponsors'):
+                sponsors += f"{s.get('name', '')}; "
+        sponsors = sponsors[:-2]
+
+        preregister = session.get('isPreRegisterAllowed', '')
+
         # Strip HTML from description
         html_description = session.get('description', '')
         soup = BeautifulSoup(html_description, 'html.parser')
@@ -42,14 +65,22 @@ def main():
             'Start Time': start_time,
             'End Time': end_time,
             'Location': location,
+            'Preregistration': preregister,
+            'Presenters': presenters,
+            'Professional Titles': professional_titles,
+            'Institutions': institutions,
+            'Sponsors': sponsors,
             'Description': plain_description
         })
 
     # Save to CSV
     with open("apha2025_sessions.csv", mode="w", newline="", encoding="utf-8") as csv_file:
-        fieldnames = ['Title', 'Date', 'Start Time', 'End Time', 'Location', 'Description']
+        fieldnames = ['Title', 'Date', 'Start Time', 'End Time', 'Location', 'Preregistration', 'Presenters', 'Professional Titles', 'Institutions', 'Sponsors', 'Description']
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(parsed_sessions)
 
     print(f"✅ Saved {len(parsed_sessions)} sessions to 'apha2025_sessions.csv'")
+
+if __name__ == "__main__":
+    main()

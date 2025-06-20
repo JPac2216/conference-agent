@@ -21,6 +21,11 @@ Date: {row["Date"]}
 Start Time: {row["Start Time"]} 
 End Time: {row["End Time"]}
 Location: {row["Location"]}
+Preregistration: {row["Preregistration"]}
+Presenters: {row["Presenters"]}
+Professional Titles: {row["Professional Titles"]}
+Institutions: {row["Institutions"]}
+Sponsors: {row["Sponsors"]}
 Description Chunk {desc_count}: {row["Description"][j:j+500]}"""
                         full_chunks.append(chunk)
                         desc_count+=1
@@ -37,20 +42,6 @@ Description Chunk {desc_count}: {row["Description"][j:j+500]}"""
                 print("Database population from csv complete.")
     else:
         print("Database already contains data from URLs. Skipping URL population.")
-
-# For printing to terminal:
-# def prompt_database(query):
-#     """Prompts the Chroma database by performing a simple similarity search."""
-#     query = query
-#     query_embedding = embedder.encode([query])[0]
-#     results = collection.query(query_embeddings=[query_embedding], n_results=15)
-#     if results and results['documents'] and results['distances']:
-#         for i, doc in enumerate(results['documents'][0]):
-#             print(f"""
-#             text: {doc}
-#             score: {results['distances'][0][i]}""")
-#     else:
-#         print("No results found in the database.")
 
 def retriever_tool(query: str) -> str:
     """This tool searches the Chroma database containing all of the session info and returns the top 10 chunks."""
