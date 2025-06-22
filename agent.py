@@ -4,14 +4,14 @@ import streamlit as st
 
 path = "apha2025_sessions.csv"
 
-# Extract the APHA 2025 session schedule
-if not os.path.exists(path):
-    extract_schedule.main()
-else:
-    print(f"'{path}' already exists. Skipping extraction.")
+# # Extract the APHA 2025 session schedule
+# if not os.path.exists(path):
+#     extract_schedule.main()
+# else:
+#     print(f"'{path}' already exists. Skipping extraction.")
 
-#Creating the ChromaDB
-add_csv_to_chroma.populate_from_csv(path)
+# #Creating the ChromaDB
+# add_csv_to_chroma.populate_from_csv(path)
 
 #Import LLM and LangGraph structure
 from dotenv import load_dotenv
@@ -119,6 +119,8 @@ For EACH speaker included find their LinkedIn profiles by using the LinkedIn sea
     "args": { "name": "Jake Paccione", "title": "Undergraduate Research Assistant", "institution": "Stevens Institute of Technology" }
     }
 
+    If you cannot find a relevant result, inform the user that you could not find their LinkedIn profile.
+
 If you need to look up some information before asking a follow up question, you are allowed to do that!
 Please always cite exactly where you got your answer.
 """
@@ -180,19 +182,33 @@ graph.add_edge("retriever", "llm")
 agent = graph.compile()
 
 def running_agent():
-    print("\n=== RAG AGENT===")
-    
-    state: AgentState = {"messages": []}
-    while True:
-        user_input = input("\nWhat is your question: ")
-        if user_input.lower() in ['exit', 'quit']:
-            break
-            
-        state['messages'].append(HumanMessage(content=user_input))
+    # print("\n=== RAG AGENT===")
+    st.title("RAG Conference Planning Agent :material/check_box:")
 
+    if "messages" not in st.session_state:
+        st.session_state["messages"] = []
+
+    for msg in st.session_state["messages"]:
+        role = "user" if isinstance(msg, HumanMessage) else "assistant"
+        with st.chat_message(role):
+            if role == "user":
+                st.write(msg.content)
+            else:
+                st.write(msg)
+
+    user_input = st.chat_input("Say something", key="chat_input")
+    if user_input:
+        with st.chat_message("user"):
+            st.write(user_input)
+
+        st.session_state["messages"].append(HumanMessage(content=user_input))
+
+        state: AgentState = {"messages": st.session_state["messages"]}
         result = agent.invoke(state)
-        
-        print("\n=== ANSWER ===")
-        print(result['messages'][-1].content)
+
+        with st.chat_message("assistant"):
+            st.write(result["messages"][-1].content)
+
+        st.session_state["messages"].append(result["messages"][-1].content)
 
 running_agent()
