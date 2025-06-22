@@ -1,5 +1,4 @@
 import requests
-from tavily import TavilyClient
 import os
 from dotenv import load_dotenv
 import json
