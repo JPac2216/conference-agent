@@ -4,6 +4,16 @@ chroma_data/
 
 .env
 
-app.py
-
 apha2025_sessions.csv
+
+naccho2025_sessions.csv
+
+conference-agent.zip
+
+images/
+
+test.txt
+
+__pycache__
+
+chromedriver.exe

@@ -1,17 +1,22 @@
 import os
-import extract_schedule, add_csv_to_chroma
+import extract_apha, extract_naccho, add_csv_to_chroma
 import streamlit as st
 
-path = "apha2025_sessions.csv"
+apha_path = "apha2025_sessions.csv"
+naccho_path = "naccho2025_sessions.csv"
+chroma_path = "chroma_data/"
 
-# # Extract the APHA 2025 session schedule
-# if not os.path.exists(path):
-#     extract_schedule.main()
-# else:
-#     print(f"'{path}' already exists. Skipping extraction.")
+# Extract the APHA 2025 session schedule
+if not os.path.exists(apha_path):
+    print("Extracting sessions for APHA 2025...")
+    extract_apha.main()
+    add_csv_to_chroma.populate_from_csv(apha_path, "APHA 2025")
 
-# #Creating the ChromaDB
-# add_csv_to_chroma.populate_from_csv(path)
+# Extract the NACCHO 2025 session schedule
+if not os.path.exists(naccho_path):
+    print("Extracting sessions for NACCHO360 2025...")
+    extract_naccho.main()
+    add_csv_to_chroma.populate_from_csv(naccho_path, "NACCHO360 2025")
 
 #Import LLM and LangGraph structure
 from dotenv import load_dotenv
@@ -88,10 +93,10 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     
 system_prompt = """
-You are an intelligent AI assistant who answers questions about public health conferences and is able to help users plan sessions based on the 'apha2025_sessions.csv' file loaded into your knowledge base.
+You are an intelligent AI assistant who answers questions about public health conferences and is able to help users plan sessions based on the chroma database loaded into your knowledge base.
 Always focus your response **only on the user's most recent message**. Ignore earlier user questions unless explicitly referenced.
 
-Use the retriever tool available to answer the user's latest question regarding all events within the program. When you need to search the database, call retriever_tool with roughly 3–5 **keywords**, not full sentences.
+Use the retriever tool available to answer the user's latest question regarding all events within the programs. When you need to search the database, call retriever_tool with roughly 3–5 **keywords**, not full sentences.
 
 Example: Say the user is asking for conferences about COVID on March 22:
 
@@ -99,13 +104,16 @@ Example: Say the user is asking for conferences about COVID on March 22:
   "args": { "query": "COVID-19, 2025-03-22, vaccine updates, real-world data" }
 }
 
-Summarize the event for the user with relevent info you find from the tool, and offer assistance based on the user's question. 
+Summarize the event for the user with relevent info you find from the tool.
 
 Please provide dates, times (in standard time NOT military time) and locations. Please include special interest groups.
 Include if the user is able to preregister for the event (based on the TRUE/FALSE) data.
 
-Additionally include the speakers, which may be provided either in the 'Presenters' key or in the description itself. 
-For EACH speaker included find their LinkedIn profiles by using the LinkedIn search tool and feed it each presenter's full name, title, and institution based on the info given to you from the retriever tool.
+Additionally include the speakers, which may be provided either in the 'Presenters' key or in the description itself.
+
+DO NOT ask the user to find LinkedIn profiles for the presenters.
+
+ONLY If EXPLICITLY asked to, find each speaker's LinkedIn profiles by using the LinkedIn search tool and feed it each presenter's full name, title, and institution based on the info given to you from the retriever tool.
 
     Example: Say the retriever tool gives you:
 
@@ -121,6 +129,7 @@ For EACH speaker included find their LinkedIn profiles by using the LinkedIn sea
 
     If you cannot find a relevant result, inform the user that you could not find their LinkedIn profile.
 
+    
 If you need to look up some information before asking a follow up question, you are allowed to do that!
 Please always cite exactly where you got your answer.
 """

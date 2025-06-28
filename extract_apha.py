@@ -37,20 +37,20 @@ def main():
         institutions = ''
         if isinstance(session.get('speakers'), list):
             for s in session.get('speakers'):
-                presenters += f"{s.get('firstName', '')} {s.get('lastName', '')}; "
-                professional_titles += f"{s.get('title', '')}; "
-                institutions += f"{s.get('company', '')}; "
+                presenters += f"{s.get('firstName', '')} {s.get('lastName', '')} | "
+                professional_titles += f"{s.get('title', '')} | "
+                institutions += f"{s.get('company', '')} | "
 
-        presenters = presenters[:-2]
-        professional_titles = professional_titles[:-2]
-        institutions = institutions[:-2]
+        presenters = presenters[:-3]
+        professional_titles = professional_titles[:-3]
+        institutions = institutions[:-3]
 
         #Handle sponsor info
         sponsors = ''
         if isinstance(session.get('sponsors'), list):
             for s in session.get('sponsors'):
-                sponsors += f"{s.get('name', '')}; "
-        sponsors = sponsors[:-2]
+                sponsors += f"{s.get('name', '')} | "
+        sponsors = sponsors[:-3]
 
         preregister = session.get('isPreRegisterAllowed', '')
 
