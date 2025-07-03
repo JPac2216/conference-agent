@@ -10,10 +10,14 @@ naccho2025_sessions.csv
 
 conference-agent.zip
 
-images/
+resources/
 
 test.txt
 
 __pycache__
 
 chromedriver.exe
+
+table.py
+
+table.docx

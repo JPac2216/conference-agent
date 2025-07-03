@@ -38,3 +38,9 @@ Next Steps: (6/18)
 - First name, Last name, Designation (title), Role, Sponsors, IsPreRegisterAllowed, City, State
 
 - Use search tool (Tavily) to find City, State, LinkedIn
+
+
+Next steps: 6/25
+- Next website extraction (NACCHO)
+- Experiment with CoPilot
+- Presentation

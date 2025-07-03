@@ -2,9 +2,29 @@ import os
 import extract_apha, extract_naccho, add_csv_to_chroma
 import streamlit as st
 
+#Import LLM and LangGraph structure
+from dotenv import load_dotenv
+from langgraph.graph import StateGraph, START, END
+from typing import TypedDict, Annotated, Sequence
+from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, ToolMessage, AIMessage
+from operator import add as add_messages
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.tools import tool
+import requests
+import json
+
+# Import Table tools
+from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.enum.section import WD_ORIENT
+
+
+
 apha_path = "apha2025_sessions.csv"
 naccho_path = "naccho2025_sessions.csv"
 chroma_path = "chroma_data/"
+table_path = "table.docx"
 
 # Extract the APHA 2025 session schedule
 if not os.path.exists(apha_path):
@@ -18,17 +38,6 @@ if not os.path.exists(naccho_path):
     extract_naccho.main()
     add_csv_to_chroma.populate_from_csv(naccho_path, "NACCHO360 2025")
 
-#Import LLM and LangGraph structure
-from dotenv import load_dotenv
-from langgraph.graph import StateGraph, START, END
-from typing import TypedDict, Annotated, Sequence
-from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, ToolMessage
-from operator import add as add_messages
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.tools import tool
-import requests
-import json
-
 load_dotenv()
 
 llm = ChatGoogleGenerativeAI(
@@ -36,6 +45,7 @@ llm = ChatGoogleGenerativeAI(
     temperature=0
 )
 
+# Establish tools for the LLM to use
 @tool
 def retriever_tool(query: str) -> str:
     """This tool searches the Chroma database containing all of the session info and returns the top 10 chunks."""
@@ -75,6 +85,10 @@ def linkedin_search_tool(name: str, title: str, institution: str) -> str:
 
     #print(response.text)
     dict = json.loads(response.text)
+
+    if not dict.get("results") or len(dict["results"]) == 0 or "linkedin" not in dict["results"][0]["url"]:
+        return f"I could not find {name}'s LinkedIn profile."
+
     raw_url = dict["results"][0]["url"]
 
     if "/posts/" in raw_url or "/activity/" in raw_url:
@@ -82,7 +96,70 @@ def linkedin_search_tool(name: str, title: str, institution: str) -> str:
         return f"https://www.linkedin.com/in/{profile}"
     return raw_url
 
-tools = [retriever_tool, linkedin_search_tool]
+# Helper function for table tool
+def set_table_border(table):
+    tbl = table._tbl
+    tblPr = tbl.tblPr
+
+    tblBorders = OxmlElement('w:tblBorders')
+    for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+        border = OxmlElement(f'w:{border_name}')
+        border.set(qn('w:val'), 'single')
+        border.set(qn('w:sz'), '4')
+        border.set(qn('w:space'), '0')
+        border.set(qn('w:color'), 'auto')
+        tblBorders.append(border)
+
+    tblPr.append(tblBorders)
+
+@tool
+def table_tool(names: str, professional_titles: str, institution: str, city_state: str, title: str, dtl: str, bio: str):
+    """This tool uses info from the database to generate a table output in docx that gets returned to the user.
+    Args:
+        names: Names of presenters
+        professional titles: Titles for each presenter
+        institution: presenter's institution
+        city_state: City / State of presenters, try to get as specific as possible
+        title: Title of presentation
+        dtl: Date, time, and location
+        bio: Each presenter's LinkedIn
+    """
+
+    document = Document()
+
+    section = document.sections[-1]
+    section.orientation = WD_ORIENT.LANDSCAPE
+
+    new_width, new_height = section.page_height, section.page_width
+    section.page_width = new_width
+    section.page_height = new_height
+
+    table = document.add_table(rows=2, cols=7)
+    set_table_border(table)
+
+    hdr_cells = table.rows[0].cells
+    hdr_cells[0].text = "Name of Presenter (s)"
+    hdr_cells[1].text = "Professional Title"
+    hdr_cells[2].text = "Institution"
+    hdr_cells[3].text = "City / State"
+    hdr_cells[4].text = "Title of Presentation"
+    hdr_cells[5].text = "Date, time and location"
+    hdr_cells[6].text = "Biography"
+
+    row_cells = table.rows[1].cells
+    row_cells[0].text = names
+    row_cells[1].text = professional_titles
+    row_cells[2].text = institution
+    row_cells[3].text = city_state
+    row_cells[4].text = title
+    row_cells[5].text = dtl
+    row_cells[6].text = bio
+
+    document.save('table.docx')
+
+    return "Table successfully created."
+
+tools = [retriever_tool, linkedin_search_tool, table_tool]
 tools_dict = {our_tool.name: our_tool for our_tool in tools}
 
 # Allow the LLM to use the tools
@@ -93,51 +170,96 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     
 system_prompt = """
-You are an intelligent AI assistant who answers questions about public health conferences and is able to help users plan sessions based on the chroma database loaded into your knowledge base.
-Always focus your response **only on the user's most recent message**. Ignore earlier user questions unless explicitly referenced.
+You are an intelligent AI assistant that answers questions about public health conferences and helps users plan sessions using data from a ChromaDB-backed knowledge base.
 
-Use the retriever tool available to answer the user's latest question regarding all events within the programs. When you need to search the database, call retriever_tool with roughly 3–5 **keywords**, not full sentences.
+🔁 Always respond ONLY to the user's **most recent message**. Ignore prior user inputs unless they are referenced again.
 
-Example: Say the user is asking for conferences about COVID on March 22:
+🔍 When the user asks about event sessions or people, use the `retriever_tool` to search the database. DO NOT respond based on your own knowledge unless explicitly instructed to.
 
-{ "name": "retriever_tool",
-  "args": { "query": "COVID-19, 2025-03-22, vaccine updates, real-world data" }
+📄 When the user asks for info in table format, use the `table_tool` to generate a downloadable DOCX document.
+
+🔗 Only use the `linkedin_search_tool` if the user EXPLICITLY asks for LinkedIn profiles of presenters OR if you are using the table_tool.
+
+---
+### 🔧 TOOL INSTRUCTIONS
+
+#### 🟦 TOOL: `retriever_tool`
+Use this when the user asks about specific conference sessions, presenters, topics, or events.
+
+**Call Example**:
+
+Question: What sessions on covid are there on March 22?
+{
+  "name": "retriever_tool",
+  "args": {
+    "query": "COVID-19, 2025-03-22, vaccine updates, real-world data"
+  }
 }
 
-Summarize the event for the user with relevent info you find from the tool.
+**Search Tips**:
+- Use ~3-5 keywords, not full sentences
+- Include date, topic, or speaker names if relevant
 
-Please provide dates, times (in standard time NOT military time) and locations. Please include special interest groups.
-Include if the user is able to preregister for the event (based on the TRUE/FALSE) data.
+---
 
-Additionally include the speakers, which may be provided either in the 'Presenters' key or in the description itself.
+#### 📊 TOOL: `table_tool`
+Use this to create a downloadable table of a session's info. Inputs are structured as follows:
 
-DO NOT ask the user to find LinkedIn profiles for the presenters.
+table_tool(
+    names="Anandi Law; Evelyn Kim; Lord Sarino; Micah Hata; Skai Pan",
+    professional_titles="Professor; Pharmacy Resident; Manager; Director; Fellow",
+    institution="Western University of Health Sciences; Ralphs Pharmacy",
+    city_state="California",
+    title="Technician Roles in Vaccinations: Impact of California Immunization Registry Access...",
+    dtl="March 22, 1:00 PM - 3:00 PM, Exhibit Hall D - Music City Center",
+    bio="https://www.linkedin.com/in/anandi-law-6548b25/"
+)
 
-ONLY If EXPLICITLY asked to, find each speaker's LinkedIn profiles by using the LinkedIn search tool and feed it each presenter's full name, title, and institution based on the info given to you from the retriever tool.
+Include:
+- Full presenter names (separated by semi-colons)
+- Matching professional titles
+- Institution(s)
+- City/State (Likely found from LinkedIn or Institution)
+- Title of presentation
+- Date, time, and location in one string
+- LinkedIn(s) if available, if not **leave blank**
 
-    Example: Say the retriever tool gives you:
+---
 
-    Presenters: Jake Paccione
-    Professional Titles: Undergraduate Research Assistant
-    Institutions: Stevens Institute of Technology
+#### 🔍 TOOL: `linkedin_search_tool`
+ONLY use if the user explicitly asks you to find a speaker's LinkedIn OR if you are creating a table with the table_tool.
 
-    Use the LinkedIn Search Tool:
+Use the **name, title, and institution** of the presenter.
 
-    { "name": "linkedin_search_tool",
-    "args": { "name": "Jake Paccione", "title": "Undergraduate Research Assistant", "institution": "Stevens Institute of Technology" }
-    }
+**Example call**:
+{
+  "name": "linkedin_search_tool",
+  "args": {
+    "name": "Jake Paccione",
+    "title": "Undergraduate Research Assistant",
+    "institution": "Stevens Institute of Technology"
+  }
+}
 
-    If you cannot find a relevant result, inform the user that you could not find their LinkedIn profile.
+If no result is found, reply:  
+> "I couldn't find a LinkedIn profile for [name]."
 
-    
-If you need to look up some information before asking a follow up question, you are allowed to do that!
-Please always cite exactly where you got your answer.
+---
+
+### 💡 ADDITIONAL GUIDELINES
+
+- Always provide session **date, time (standard time format), and location**
+- Mention whether preregistration is required, if `Preregistration: True`
+- List **presenters** (from `Presenters` or the `Description`)
+- Include **special interest groups** if mentioned
+
 """
 
 # LLM Agent
 def call_llm(state: AgentState) -> AgentState:
     """Function to call the LLM with the current state"""
-    messages = list(state['messages'])
+    MAX_HISTORY = 20
+    messages = list(state['messages'])[-MAX_HISTORY:]
 
     model_messages = [SystemMessage(content=system_prompt)] + messages
 
@@ -162,6 +284,14 @@ def call_tools(state: AgentState) -> AgentState:
             print(f"Result length: {len(str(result))}")
 
         results.append(ToolMessage(tool_call_id=t['id'], name=t['name'], content=str(result)))
+
+        result = tools_dict[t['name']].invoke(t['args'])
+
+        # If the table was just created, force rerun
+        if t["name"] == "table_tool" and os.path.exists("table.docx"):
+            st.session_state["just_made_table"] = True
+            st.rerun()
+
 
     print("Tools Execution Complete. Back to the model!")
     return {'messages': state['messages'] + results}
@@ -191,8 +321,7 @@ graph.add_edge("retriever", "llm")
 agent = graph.compile()
 
 def running_agent():
-    # print("\n=== RAG AGENT===")
-    st.title("RAG Conference Planning Agent :material/check_box:")
+    st.title("RAG Conference Planning Agent")
 
     if "messages" not in st.session_state:
         st.session_state["messages"] = []
@@ -205,7 +334,24 @@ def running_agent():
             else:
                 st.write(msg)
 
-    user_input = st.chat_input("Say something", key="chat_input")
+    if st.session_state.get("just_made_table"):
+        with open("table.docx", "rb") as file:
+            
+            download_success = "Table created. You can download it below."
+
+            with st.chat_message("assistant"):
+                st.write(download_success)
+            st.session_state["messages"].append(AIMessage(content=download_success))
+
+            st.download_button(
+                label="Download Table",
+                data=file,
+                file_name="table.docx",
+                icon=":material/download:"
+            )
+        st.session_state["just_made_table"] = False
+
+    user_input = st.chat_input("How can I help you plan for the APhA 2025 and NACCHO360 2025 Conferences?", key="chat_input")
     if user_input:
         with st.chat_message("user"):
             st.write(user_input)
