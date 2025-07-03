@@ -1,5 +1,7 @@
 .venv
 
+.gitignore
+
 chroma_data/
 
 .env
