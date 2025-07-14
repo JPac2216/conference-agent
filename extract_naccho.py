@@ -106,42 +106,49 @@ def main():
     WebDriverWait(driver, 5).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, ".result-heading.mb0.pb4"))
     )
-    all_results = driver.find_element(By.CSS_SELECTOR, ".result-heading.mb0.pb4 .btn-tertiary.btn-tertiary_small")
-    all_results.click()
 
-    time.sleep(1)
-
-    body = driver.find_element(By.TAG_NAME, "body")
-    for _ in range(160):
-        body.send_keys(Keys.PAGE_DOWN)
-        time.sleep(0.005)
-
-    # Store all of the session links into an array
-    link_elements = driver.find_elements(By.CSS_SELECTOR, ".card-Title.break-word.f2.mb0.mt0 a")
-    session_links = [el.get_attribute("href") for el in link_elements]
-    print(f"Found {len(session_links)} sessions for NACCHO360 2025.")
+    num_results = driver.find_element(By.CSS_SELECTOR, ".f1.ma0.mb3.mb0-l.normal")
+    num_results = driver.find_element(By.XPATH, "//span[text()='575']")
+    print(num_results)
 
     driver.quit()
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    # all_results = driver.find_element(By.CSS_SELECTOR, ".result-heading.mb0.pb4 .btn-tertiary.btn-tertiary_small")
+    # all_results.click()
 
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        futures = [executor.submit(scrape_html, link) for link in session_links]
+    # time.sleep(1)
 
-    for i, future in enumerate(as_completed(futures)):
-        try:
-            future.result()
-        except Exception as e:
-            print(f"Error scraping session {i + 1}: {e}")
+    # body = driver.find_element(By.TAG_NAME, "body")
+    # for _ in range(160):
+    #     body.send_keys(Keys.PAGE_DOWN)
+    #     time.sleep(0.005)
 
-    # Save to CSV
-    with open("naccho2025_sessions.csv", mode="w", newline="", encoding="utf-8") as csv_file:
-        fieldnames = ['Title', 'Date', 'Start Time', 'End Time', 'Location', 'Preregistration', 'Presenters', 'Professional Titles', 'Institutions', 'Sponsors', 'Description']
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(parsed_sessions)
+    # # Store all of the session links into an array
+    # link_elements = driver.find_elements(By.CSS_SELECTOR, ".card-Title.break-word.f2.mb0.mt0 a")
+    # session_links = [el.get_attribute("href") for el in link_elements]
+    # print(f"Found {len(session_links)} sessions for NACCHO360 2025.")
 
-    print(f"✅ Saved {len(parsed_sessions)} sessions to 'apha2025_sessions.csv'")
+    # driver.quit()
+
+    # from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    # with ThreadPoolExecutor(max_workers=20) as executor:
+    #     futures = [executor.submit(scrape_html, link) for link in session_links]
+
+    # for i, future in enumerate(as_completed(futures)):
+    #     try:
+    #         future.result()
+    #     except Exception as e:
+    #         print(f"Error scraping session {i + 1}: {e}")
+
+    # # Save to CSV
+    # with open("naccho2025_sessions.csv", mode="w", newline="", encoding="utf-8") as csv_file:
+    #     fieldnames = ['Title', 'Date', 'Start Time', 'End Time', 'Location', 'Preregistration', 'Presenters', 'Professional Titles', 'Institutions', 'Sponsors', 'Description']
+    #     writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+    #     writer.writeheader()
+    #     writer.writerows(parsed_sessions)
+
+    # print(f"✅ Saved {len(parsed_sessions)} sessions to 'apha2025_sessions.csv'")
 
 
 if __name__ == "__main__":

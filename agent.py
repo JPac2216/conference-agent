@@ -1,3 +1,10 @@
+"""
+Notes for 7/10
+- Network diagram? (networkx)
+- ChromaDB updates
+- Error
+"""
+
 import os
 os.environ["STREAMLIT_WATCH_FILE_SYSTEM"] = "false"
 
