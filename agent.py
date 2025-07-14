@@ -1,4 +1,6 @@
 import os
+os.environ["STREAMLIT_WATCH_FILE_SYSTEM"] = "false"
+
 import extract_apha, extract_naccho, add_csv_to_chroma
 import streamlit as st
 
@@ -19,7 +21,17 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.enum.section import WD_ORIENT
 
+# Import Types for expected structures
+from typing_extensions import TypedDict, List
 
+class PresenterInfo(TypedDict):
+    names: str
+    professional_titles: str
+    institution: str
+    city_state: str
+    title: str
+    dtl: str
+    bio: str
 
 apha_path = "apha2025_sessions.csv"
 naccho_path = "naccho2025_sessions.csv"
@@ -83,11 +95,10 @@ def linkedin_search_tool(name: str, title: str, institution: str) -> str:
 
     response = requests.request("POST", url, json=payload, headers=headers)
 
-    #print(response.text)
     dict = json.loads(response.text)
 
     if not dict.get("results") or len(dict["results"]) == 0 or "linkedin" not in dict["results"][0]["url"]:
-        return f"I could not find {name}'s LinkedIn profile."
+        return ""
 
     raw_url = dict["results"][0]["url"]
 
@@ -113,16 +124,17 @@ def set_table_border(table):
     tblPr.append(tblBorders)
 
 @tool
-def table_tool(names: str, professional_titles: str, institution: str, city_state: str, title: str, dtl: str, bio: str):
+def table_tool(info: List[PresenterInfo]):
     """This tool uses info from the database to generate a table output in docx that gets returned to the user.
     Args:
-        names: Names of presenters
-        professional titles: Titles for each presenter
-        institution: presenter's institution
-        city_state: City / State of presenters, try to get as specific as possible
-        title: Title of presentation
-        dtl: Date, time, and location
-        bio: Each presenter's LinkedIn
+        info: List of PresenterInfo dictionaries including:
+            names: Names of presenters
+            professional titles: Titles for each presenter
+            institution: presenter's institution
+            city_state: City / State of presenters, try to get as specific as possible
+            title: Title of presentation
+            dtl: Date, time, and location
+            bio: Each presenter's LinkedIn
     """
 
     document = Document()
@@ -134,7 +146,7 @@ def table_tool(names: str, professional_titles: str, institution: str, city_stat
     section.page_width = new_width
     section.page_height = new_height
 
-    table = document.add_table(rows=2, cols=7)
+    table = document.add_table(rows=len(info) + 1, cols=7)
     set_table_border(table)
 
     hdr_cells = table.rows[0].cells
@@ -146,14 +158,15 @@ def table_tool(names: str, professional_titles: str, institution: str, city_stat
     hdr_cells[5].text = "Date, time and location"
     hdr_cells[6].text = "Biography"
 
-    row_cells = table.rows[1].cells
-    row_cells[0].text = names
-    row_cells[1].text = professional_titles
-    row_cells[2].text = institution
-    row_cells[3].text = city_state
-    row_cells[4].text = title
-    row_cells[5].text = dtl
-    row_cells[6].text = bio
+    for i, dict in enumerate(info):
+        row_cells = table.rows[i+1].cells
+        row_cells[0].text = dict.get("names")
+        row_cells[1].text = dict.get("professional_titles")
+        row_cells[2].text = dict.get("institution")
+        row_cells[3].text = dict.get("city_state")
+        row_cells[4].text = dict.get("title")
+        row_cells[5].text = dict.get("dtl")
+        row_cells[6].text = dict.get("bio")
 
     document.save('table.docx')
 
@@ -172,18 +185,18 @@ class AgentState(TypedDict):
 system_prompt = """
 You are an intelligent AI assistant that answers questions about public health conferences and helps users plan sessions using data from a ChromaDB-backed knowledge base.
 
-🔁 Always respond ONLY to the user's **most recent message**. Ignore prior user inputs unless they are referenced again.
+Always respond ONLY to the user's **most recent message**. Ignore prior user inputs unless they are referenced again.
 
-🔍 When the user asks about event sessions or people, use the `retriever_tool` to search the database. DO NOT respond based on your own knowledge unless explicitly instructed to.
+When the user asks about event sessions or people, use the `retriever_tool` to search the database. DO NOT respond based on your own knowledge unless explicitly instructed to.
 
-📄 When the user asks for info in table format, use the `table_tool` to generate a downloadable DOCX document.
+When the user asks for info in table format, use the `table_tool` to generate a downloadable DOCX document.
 
-🔗 Only use the `linkedin_search_tool` if the user EXPLICITLY asks for LinkedIn profiles of presenters OR if you are using the table_tool.
+Only use the `linkedin_search_tool` if the user EXPLICITLY asks for LinkedIn profiles of presenters OR if you are using the table_tool.
 
 ---
-### 🔧 TOOL INSTRUCTIONS
+### TOOL INSTRUCTIONS
 
-#### 🟦 TOOL: `retriever_tool`
+#### TOOL: `retriever_tool`
 Use this when the user asks about specific conference sessions, presenters, topics, or events.
 
 **Call Example**:
@@ -202,31 +215,46 @@ Question: What sessions on covid are there on March 22?
 
 ---
 
-#### 📊 TOOL: `table_tool`
-Use this to create a downloadable table of a session's info. Inputs are structured as follows:
+#### TOOL: `table_tool`
+Use this AFTER finding each speaker's LinkedIn to create a downloadable table of session info. 
+If there are multiple instances of the same institution, you only have to write it **once**.
+Inputs are structured as follows:
 
 table_tool(
-    names="Anandi Law; Evelyn Kim; Lord Sarino; Micah Hata; Skai Pan",
-    professional_titles="Professor; Pharmacy Resident; Manager; Director; Fellow",
-    institution="Western University of Health Sciences; Ralphs Pharmacy",
-    city_state="California",
-    title="Technician Roles in Vaccinations: Impact of California Immunization Registry Access...",
-    dtl="March 22, 1:00 PM - 3:00 PM, Exhibit Hall D - Music City Center",
-    bio="https://www.linkedin.com/in/anandi-law-6548b25/"
+    [
+        {
+            "names": "Anandi Law; Evelyn Kim; Lord Sarino; Micah Hata; Skai Pan",
+            "professional_titles": "President, AACP; Associate Dean for Assessment, College of Pharmacy, Western University of Health Sciences;",
+            "institution": "Western Health Sciences",
+            "city_state": "Los Angeles, California",
+            "title": "Technician Roles in Vaccinations: Impact of California Immunization Registry Access on Vaccine Co‐Administration Rates in Community Pharmacies",
+            "dtl": "March 22 \n 1:00 PM - 3:00 PM \n Exhibit Hall D - Music City Center",
+            "bio": "https://www.linkedin.com/in/anandi-law-6548b25/"
+        },
+        {
+            "names": "Abby Roth",
+            "professional_titles": "Founder/Microbiologist",
+            "institution": "Pure Microbiology",
+            "city_state": "Macungie, Pennsylvania",
+            "title": "BCSCP - K.I.S.S.: Know Important Sampling Standards",
+            "dtl": "March 20 \n 8:15 AM - 9:15 AM \n 101AB - Music City Center",
+            "bio": "https://www.linkedin.com/in/abbyroth/"
+        }
+    ]
 )
 
 Include:
 - Full presenter names (separated by semi-colons)
 - Matching professional titles
 - Institution(s)
-- City/State (Likely found from LinkedIn or Institution)
+- City/State (Likely found from LinkedIn or Institution, or possibly even the Description)
 - Title of presentation
 - Date, time, and location in one string
-- LinkedIn(s) if available, if not **leave blank**
+- LinkedIn(s) if you can find it via the linkedin_search_tool, if not **leave blank**
 
 ---
 
-#### 🔍 TOOL: `linkedin_search_tool`
+#### TOOL: `linkedin_search_tool`
 ONLY use if the user explicitly asks you to find a speaker's LinkedIn OR if you are creating a table with the table_tool.
 
 Use the **name, title, and institution** of the presenter.
@@ -246,7 +274,7 @@ If no result is found, reply:
 
 ---
 
-### 💡 ADDITIONAL GUIDELINES
+### ADDITIONAL GUIDELINES
 
 - Always provide session **date, time (standard time format), and location**
 - Mention whether preregistration is required, if `Preregistration: True`
@@ -284,8 +312,6 @@ def call_tools(state: AgentState) -> AgentState:
             print(f"Result length: {len(str(result))}")
 
         results.append(ToolMessage(tool_call_id=t['id'], name=t['name'], content=str(result)))
-
-        result = tools_dict[t['name']].invoke(t['args'])
 
         # If the table was just created, force rerun
         if t["name"] == "table_tool" and os.path.exists("table.docx"):
@@ -359,7 +385,9 @@ def running_agent():
         st.session_state["messages"].append(HumanMessage(content=user_input))
 
         state: AgentState = {"messages": st.session_state["messages"]}
-        result = agent.invoke(state)
+
+        with st.spinner("Thinking..."):
+            result = agent.invoke(state)
 
         with st.chat_message("assistant"):
             st.write(result["messages"][-1].content)
