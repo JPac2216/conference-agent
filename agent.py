@@ -353,6 +353,11 @@ graph.add_edge("retriever", "llm")
 agent = graph.compile()
 
 def running_agent():
+    st.set_page_config(
+        page_title="Pfizer Conference Planning Agent",
+        page_icon="images\pfizer.svg"
+    )
+
     st.markdown("""
     <div style='text-align: center;'>
         <img src='https://upload.wikimedia.org/wikipedia/commons/5/57/Pfizer_%282021%29.svg' width='250' style='margin-bottom: 10px;' />
