@@ -109,7 +109,7 @@ def main():
 
     num_results = int(driver.find_element(By.CSS_SELECTOR, "h1.f1.ma0.mb3.mb0-l.normal > span > span:nth-of-type(1)").text)
 
-    wait_time = int(num_results // 5)
+    wait_time = int(num_results // 3.34)
 
     all_results = driver.find_element(By.CSS_SELECTOR, ".result-heading.mb0.pb4 .btn-tertiary.btn-tertiary_small")
     all_results.click()

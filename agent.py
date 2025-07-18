@@ -2,12 +2,11 @@
 Notes for 7/10
 - Network diagram? (networkx)
 - ChromaDB updates
-- Error
+- Error | done
+- Fix naccho | done
 """
 
 import os
-os.environ["STREAMLIT_WATCH_FILE_SYSTEM"] = "false"
-
 import extract_apha, extract_naccho, add_csv_to_chroma
 import streamlit as st
 
@@ -354,23 +353,27 @@ graph.add_edge("retriever", "llm")
 agent = graph.compile()
 
 def running_agent():
-    st.title("RAG Conference Planning Agent")
+    st.markdown("""
+    <div style='text-align: center;'>
+        <img src='https://upload.wikimedia.org/wikipedia/commons/5/57/Pfizer_%282021%29.svg' width='250' style='margin-bottom: 10px;' />
+        <div style='font-size: 40px; font-weight: bold;'>Conference Planning Agent</div>
+    </div>
+    <hr style='border: none; border-top: 2px solid #ccc; margin-top: 10px; margin-bottom: 50px;' />
+    """, unsafe_allow_html=True)
 
     if "messages" not in st.session_state:
         st.session_state["messages"] = []
 
     for msg in st.session_state["messages"]:
         role = "user" if isinstance(msg, HumanMessage) else "assistant"
-        with st.chat_message(role):
-            if role == "user":
-                st.write(msg.content)
-            else:
-                st.write(msg)
+        avatar = "images\person.svg" if isinstance(msg, HumanMessage) else "images\pfizer.svg"
+        with st.chat_message(role, avatar=avatar):
+            st.write(msg.content)
 
     if st.session_state.get("just_made_table"):
         with open("table.docx", "rb") as file:
             
-            download_success = "Table created. You can download it below."
+            download_success = 'Table created. You can download it below.'
 
             with st.chat_message("assistant"):
                 st.write(download_success)
@@ -384,9 +387,9 @@ def running_agent():
             )
         st.session_state["just_made_table"] = False
 
-    user_input = st.chat_input("How can I help you plan for the APhA 2025 and NACCHO360 2025 Conferences?", key="chat_input")
+    user_input = st.chat_input("How can I help you plan for the APhA 2025 and NACCHO360 2025 Conferences?")
     if user_input:
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar="images\person.svg"):
             st.write(user_input)
 
         st.session_state["messages"].append(HumanMessage(content=user_input))
@@ -394,11 +397,11 @@ def running_agent():
         state: AgentState = {"messages": st.session_state["messages"]}
 
         with st.spinner("Thinking..."):
-            result = agent.invoke(state)
+            result = agent.invoke(state, {"recursion_limit": 100})
 
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar="images\pfizer.svg"):
             st.write(result["messages"][-1].content)
 
-        st.session_state["messages"].append(result["messages"][-1].content)
+        st.session_state["messages"].append(AIMessage(content=result["messages"][-1].content))
 
 running_agent()
