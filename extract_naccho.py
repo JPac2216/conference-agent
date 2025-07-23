@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 import time
 from bs4 import BeautifulSoup
 import requests
@@ -97,7 +98,7 @@ def scrape_html(url: str):
     })
 
 def main():
-    service = Service(executable_path="chromedriver.exe")
+    service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service)
 
     driver.get("https://naccho2025.mapyourshow.com/8_0/explore/session-fulllist.cfm#/")
@@ -109,14 +110,12 @@ def main():
 
     num_results = int(driver.find_element(By.CSS_SELECTOR, "h1.f1.ma0.mb3.mb0-l.normal > span > span:nth-of-type(1)").text)
 
-    wait_time = int(num_results // 3.34)
+    wait_time = int(num_results // 2)
 
     all_results = driver.find_element(By.CSS_SELECTOR, ".result-heading.mb0.pb4 .btn-tertiary.btn-tertiary_small")
     all_results.click()
 
     time.sleep(1)
-
-    print(wait_time)
 
     body = driver.find_element(By.TAG_NAME, "body")
     for _ in range(wait_time):
