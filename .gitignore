@@ -5,6 +5,7 @@ resources
 __pycache__
 apha2025_sessions.csv
 naccho2025_sessions.csv
+chiexpo2025_sessions.csv
 chromedriver.exe
 table.py
 table.docx

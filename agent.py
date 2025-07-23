@@ -360,7 +360,7 @@ def running_agent():
 
     st.markdown("""
     <div style='text-align: center;'>
-        <img src='https://upload.wikimedia.org/wikipedia/commons/5/57/Pfizer_%282021%29.svg' width='250' style='margin-bottom: 10px;' />
+        <img src='https://upload.wikimedia.org/wikipedia/commons/5/57/Pfizer_%282021%29.svg' width='250' style='margin-bottom: 2px;' />
         <div style='font-size: 40px; font-weight: bold;'>Conference Planning Agent</div>
     </div>
     <hr style='border: none; border-top: 2px solid #ccc; margin-top: 10px; margin-bottom: 50px;' />
@@ -380,7 +380,7 @@ def running_agent():
             
             download_success = 'Table created. You can download it below.'
 
-            with st.chat_message("assistant"):
+            with st.chat_message("assistant", avatar="images\pfizer.svg"):
                 st.write(download_success)
             st.session_state["messages"].append(AIMessage(content=download_success))
 
