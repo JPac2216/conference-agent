@@ -58,7 +58,9 @@ SCORE: {query_results['distances'][0][i]}
 
 
 if __name__ == "__main__":
-    # populate_from_csv("apha2025_sessions.csv", "APHA 2025")
-    # populate_from_csv("naccho2025_sessions.csv", "NACCHO360 2025")
-    query = input("Prompt: ")
-    data = retriever_tool(query)
+    populate_from_csv("apha2025_sessions.csv", "APHA 2025")
+    populate_from_csv("naccho2025_sessions.csv", "NACCHO360 2025")
+    populate_from_csv("chiexpo2025_sessions.csv", "CHI Community Health Conference & Expo 2025")
+    #query = input("Prompt: ")
+    #data = retriever_tool(query)
+    

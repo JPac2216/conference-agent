@@ -20,9 +20,7 @@ data = [
 
 with open("apha2025_sessions.csv", mode="r", newline="", encoding="utf-8") as file:
     reader = csv.reader(file)
-
     header = next(reader)
-
     for row in reader:
         # Check if speakers exist
         if row[6] == '':
@@ -34,9 +32,7 @@ with open("apha2025_sessions.csv", mode="r", newline="", encoding="utf-8") as fi
 
 with open("naccho2025_sessions.csv", mode="r", newline="", encoding="utf-8") as file:
     reader = csv.reader(file)
-
     header = next(reader)
-
     for row in reader:
         # Check if speakers exist
         if row[6] == '':
@@ -48,9 +44,7 @@ with open("naccho2025_sessions.csv", mode="r", newline="", encoding="utf-8") as 
 
 with open("chiexpo2025_sessions.csv", mode="r", newline="", encoding="utf-8") as file:
     reader = csv.reader(file)
-
     header = next(reader)
-
     for row in reader:
         # Check if speakers exist
         if row[6] == '':
@@ -60,7 +54,6 @@ with open("chiexpo2025_sessions.csv", mode="r", newline="", encoding="utf-8") as
             for speaker in speakers:
                 data.append({"Speaker": speaker, "Conference": "2025 CHI & Expo", "Year": 2025, "Topic": ""})
         
-
 df = pd.DataFrame(data)
 
 # Create bipartite graph

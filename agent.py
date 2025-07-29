@@ -41,20 +41,28 @@ class PresenterInfo(TypedDict):
 
 apha_path = "apha2025_sessions.csv"
 naccho_path = "naccho2025_sessions.csv"
+chiexpo_path = "chiexpo2025_sessions.csv"
+
 chroma_path = "chroma_data/"
 table_path = "table.docx"
 
 # Extract the APHA 2025 session schedule
 if not os.path.exists(apha_path):
-    print("Extracting sessions for APHA 2025...")
+    print("Extracting sessions for APhA 2025...")
     extract_apha.main()
-    add_csv_to_chroma.populate_from_csv(apha_path, "APHA 2025")
+    add_csv_to_chroma.populate_from_csv(apha_path, "APhA 2025")
 
 # Extract the NACCHO 2025 session schedule
 if not os.path.exists(naccho_path):
     print("Extracting sessions for NACCHO360 2025...")
     extract_naccho.main()
     add_csv_to_chroma.populate_from_csv(naccho_path, "NACCHO360 2025")
+
+# Extract the CHI & Expo 2025 session schedule
+if not os.path.exists(chiexpo_path):
+    print("Extracting sessions for CHI Community Health Conference & Expo 2025...")
+    extract_naccho.main()
+    add_csv_to_chroma.populate_from_csv(chiexpo_path, "CHI Community Health Conference & Expo 2025")
 
 load_dotenv()
 
@@ -392,7 +400,7 @@ def running_agent():
             )
         st.session_state["just_made_table"] = False
 
-    user_input = st.chat_input("How can I help you plan for the APhA 2025 and NACCHO360 2025 Conferences?")
+    user_input = st.chat_input("How can I help you plan a schedule for 2025 Health Conferences?")
     if user_input:
         with st.chat_message("user", avatar="images\person.svg"):
             st.write(user_input)
