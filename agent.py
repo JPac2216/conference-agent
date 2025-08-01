@@ -39,6 +39,8 @@ class PresenterInfo(TypedDict):
     dtl: str
     bio: str
 
+conference_list = ["APhA 2025", "NACCHO360 2025", "CHI Community Health Conference & Expo 2025"]
+
 apha_path = "apha2025_sessions.csv"
 naccho_path = "naccho2025_sessions.csv"
 chiexpo_path = "chiexpo2025_sessions.csv"
@@ -75,8 +77,31 @@ llm = ChatGoogleGenerativeAI(
 @tool
 def retriever_tool(query: str) -> str:
     """This tool searches the Chroma database containing all of the session info and returns the top 10 chunks."""
-    query_embedding = add_csv_to_chroma.embedder.encode([query])[0]
-    query_results = add_csv_to_chroma.collection.query(query_embeddings=[query_embedding], n_results=10)
+
+    conference_filter = []
+    for conference in conference_list:
+        if conference.lower() in query.lower():
+            conference_filter.append(conference)
+            print(f"Added {conference} to the filter!")
+
+    clean_query = query.lower()
+    for conf in conference_list:
+        clean_query = clean_query.replace(conf.lower(), "")
+        clean_query = clean_query.replace(conf.split()[0].lower(), "")
+
+    clean_query = clean_query.strip()
+    print(clean_query)
+    query_embedding = add_csv_to_chroma.embedder.encode([clean_query])[0]
+
+    args = {
+        "query_embeddings": [query_embedding],
+        "n_results": 10
+    }
+
+    if conference_filter:
+        args["where"] = {"conference": {"$in": conference_filter}}
+
+    query_results = add_csv_to_chroma.collection.query(**args)
     result = ""
     if query_results and query_results['documents'] and query_results['distances']:
         for i, doc in enumerate(query_results['documents'][0]):
@@ -86,7 +111,7 @@ SCORE: {query_results['distances'][0][i]}
             """
         return result
     else:
-        return "I found no relevant information in the APHA 2025 Session schedule."
+        return "No results found in the database."
 
 @tool    
 def linkedin_search_tool(name: str, title: str, institution: str) -> str:
@@ -120,6 +145,30 @@ def linkedin_search_tool(name: str, title: str, institution: str) -> str:
         profile = raw_url.split("linkedin.com/")[1].split("/")[1].split("_")[0]
         return f"https://www.linkedin.com/in/{profile}"
     return raw_url
+
+@tool    
+def desc_search_tool(conference: str) -> str:
+    """This tool retrieves the description of a conference given its title, providing details on the dates and topics discusssed."""
+
+    url = "https://api.tavily.com/search"
+
+    payload = {
+        "query": f"What is the {conference} about? When is it and where does it take place? What topics will be discussed?"
+    }
+    headers = {
+        "Authorization": f"Bearer {os.environ['TAVILY_API_KEY']}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.request("POST", url, json=payload, headers=headers)
+
+    dict = json.loads(response.text)
+
+    if not dict.get("results") or len(dict["results"]) == 0:
+        return ""
+
+    return dict["results"]
+
 
 # Helper function for table tool
 def set_table_border(table):
@@ -186,7 +235,7 @@ def table_tool(info: List[PresenterInfo]):
 
     return "Table successfully created."
 
-tools = [retriever_tool, linkedin_search_tool, table_tool]
+tools = [retriever_tool, linkedin_search_tool, desc_search_tool, table_tool]
 tools_dict = {our_tool.name: our_tool for our_tool in tools}
 
 # Allow the LLM to use the tools
@@ -201,7 +250,9 @@ You are an intelligent AI assistant that answers questions about public health c
 
 Always respond ONLY to the user's **most recent message**. Ignore prior user inputs unless they are referenced again.
 
-When the user asks about event sessions or people, use the `retriever_tool` to search the database. DO NOT respond based on your own knowledge unless explicitly instructed to.
+When the user asks about event sessions or people, ALWAYS use the `retriever_tool` to search the database. DO NOT respond based on your own knowledge unless explicitly instructed to.
+
+When the user asks about the description of a conference, use the 'desc_search_tool' to search online for a summary on the conference. Provide a summary and a list of topics discussed at the conference.
 
 When the user asks for info in table format, use the `table_tool` to generate a downloadable DOCX document.
 
@@ -211,23 +262,59 @@ Only use the `linkedin_search_tool` if the user EXPLICITLY asks for LinkedIn pro
 ### TOOL INSTRUCTIONS
 
 #### TOOL: `retriever_tool`
-Use this when the user asks about specific conference sessions, presenters, topics, or events.
+Use this when the user's most RECENT question asks about specific conference sessions, presenters, topics, or events.
 
 **Call Example**:
 
-Question: What sessions on covid are there on March 22?
+Question: What sessions on covid are there on March 22 at the naccho conference?
 {
   "name": "retriever_tool",
   "args": {
-    "query": "COVID-19, 2025-03-22, vaccine updates, real-world data"
+    "query": "COVID-19, coronavirus, 2025-03-22, NACCHO360 2025"
   }
 }
 
 **Search Tips**:
 - Use ~3-5 keywords, not full sentences
 - Include date, topic, or speaker names if relevant
+- When responding to the user, supply a short summary of each session you provide.
+- When searching for sessions from a conference from the following list, make sure your query is written EXACTLY as it is in these quotes: ["APhA 2025", "NACCHO360 2025", "CHI Community Health Conference & Expo 2025"]
 
 ---
+
+#### TOOL: `linkedin_search_tool`
+ONLY use if the user explicitly asks you to find a speaker's LinkedIn OR if you are creating a table with the table_tool.
+
+Use the **name, title, and institution** of the presenter.
+
+**Example call**:
+{
+  "name": "linkedin_search_tool",
+  "args": {
+    "name": "Jake Paccione",
+    "title": "Undergraduate Research Assistant",
+    "institution": "Stevens Institute of Technology"
+  }
+}
+
+If no result is found, reply:  
+> "I couldn't find a LinkedIn profile for [name]."
+
+---
+#### TOOL: `desc_search_tool`
+ONLY use if a user asks for a summary or relevant topics at a specific conference.
+
+**Call Example**:
+
+Question: Tell me about the APhA 2025 Conference.
+{
+  "name": "desc_search_tool",
+  "args": {
+    "conference": "APhA 2025 Conference"
+  }
+}
+
+
 
 #### TOOL: `table_tool`
 Use this AFTER finding each speaker's LinkedIn to create a downloadable table of session info. 
@@ -265,26 +352,6 @@ Include:
 - Title of presentation
 - Date, time, and location in one string
 - LinkedIn(s) if you can find it via the linkedin_search_tool, if not **leave blank**
-
----
-
-#### TOOL: `linkedin_search_tool`
-ONLY use if the user explicitly asks you to find a speaker's LinkedIn OR if you are creating a table with the table_tool.
-
-Use the **name, title, and institution** of the presenter.
-
-**Example call**:
-{
-  "name": "linkedin_search_tool",
-  "args": {
-    "name": "Jake Paccione",
-    "title": "Undergraduate Research Assistant",
-    "institution": "Stevens Institute of Technology"
-  }
-}
-
-If no result is found, reply:  
-> "I couldn't find a LinkedIn profile for [name]."
 
 ---
 
