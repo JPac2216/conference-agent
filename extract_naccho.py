@@ -147,7 +147,7 @@ def main():
         writer.writeheader()
         writer.writerows(parsed_sessions)
 
-    print(f"✅ Saved {len(parsed_sessions)} sessions to 'apha2025_sessions.csv'")
+    print(f"✅ Saved {len(parsed_sessions)} sessions to 'naccho2025_sessions.csv'")
 
 
 if __name__ == "__main__":

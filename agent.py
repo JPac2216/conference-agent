@@ -7,7 +7,7 @@ Notes for 7/10
 """
 
 import os
-import extract_apha, extract_naccho, add_csv_to_chroma
+import extract_apha, extract_naccho, extract_chiexpo, add_csv_to_chroma
 import streamlit as st
 
 #Import LLM and LangGraph structure
@@ -63,7 +63,7 @@ if not os.path.exists(naccho_path):
 # Extract the CHI & Expo 2025 session schedule
 if not os.path.exists(chiexpo_path):
     print("Extracting sessions for CHI Community Health Conference & Expo 2025...")
-    extract_naccho.main()
+    extract_chiexpo.main()
     add_csv_to_chroma.populate_from_csv(chiexpo_path, "CHI Community Health Conference & Expo 2025")
 
 load_dotenv()
