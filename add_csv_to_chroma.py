@@ -1,12 +1,13 @@
 import csv
 import chromadb
 from sentence_transformers import SentenceTransformer
+import uuid
 
 client = chromadb.PersistentClient(path="./chroma_data")
 collection = client.get_or_create_collection(name="session_info", metadata={"hnsw:space": "cosine"})
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
-conference_list = ["APhA 2025", "NACCHO360 2025", "CHI Community Health Conference & Expo 2025"]
+conference_list = ["APhA 2025", "NACCHO360 2025", "CHI Community Health Conference & Expo 2025", "FMX", "Preventative Medicine"]
 
 def populate_from_csv(path: str, conference: str):
     """Scrapes CSV and adds data to ChromaDB."""
@@ -37,7 +38,7 @@ Description Chunk {desc_count}: {row["Description"][j:j+500]}"""
                     collection.add(
                         documents=full_chunks,
                         embeddings=embeddings,
-                        ids=[f"session_{i}_{j}" for j in range(len(full_chunks))],
+                        ids=[str(uuid.uuid4()) for j in range(len(full_chunks))],
                         metadatas=[{"conference": conference} for _ in full_chunks]
                     )
                 if i % 100 == 0 and i > 0:
@@ -48,6 +49,7 @@ def retriever_tool(query: str) -> str:
     """This tool searches the Chroma database containing all of the session info and returns the top 10 chunks."""
 
     conference_filter = []
+
     for conference in conference_list:
         if conference.lower() in query.lower():
             conference_filter.append(conference)

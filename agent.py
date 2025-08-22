@@ -1,14 +1,9 @@
-"""
-Notes for 7/10
-- Network diagram? (networkx)
-- ChromaDB updates
-- Error | done
-- Fix naccho | done
-"""
 
 import os
 import extract_apha, extract_naccho, extract_chiexpo, add_csv_to_chroma
 import streamlit as st
+from pypdf import PdfReader
+import uuid
 
 #Import LLM and LangGraph structure
 from dotenv import load_dotenv
@@ -39,7 +34,8 @@ class PresenterInfo(TypedDict):
     dtl: str
     bio: str
 
-conference_list = ["APhA 2025", "NACCHO360 2025", "CHI Community Health Conference & Expo 2025"]
+if "conference_list" not in st.session_state:
+    st.session_state["conference_list"] = ["APhA 2025", "NACCHO360 2025", "CHI Community Health Conference & Expo 2025"]
 
 apha_path = "apha2025_sessions.csv"
 naccho_path = "naccho2025_sessions.csv"
@@ -66,7 +62,7 @@ if not os.path.exists(chiexpo_path):
     extract_chiexpo.main()
     add_csv_to_chroma.populate_from_csv(chiexpo_path, "CHI Community Health Conference & Expo 2025")
 
-load_dotenv()
+#load_dotenv()
 
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.0-flash",
@@ -79,13 +75,13 @@ def retriever_tool(query: str) -> str:
     """This tool searches the Chroma database containing all of the session info and returns the top 10 chunks."""
 
     conference_filter = []
-    for conference in conference_list:
+    for conference in st.session_state["conference_list"]:
         if conference.lower() in query.lower():
             conference_filter.append(conference)
             print(f"Added {conference} to the filter!")
 
     clean_query = query.lower()
-    for conf in conference_list:
+    for conf in st.session_state["conference_list"]:
         clean_query = clean_query.replace(conf.lower(), "")
         clean_query = clean_query.replace(conf.split()[0].lower(), "")
 
@@ -245,7 +241,7 @@ llm = llm.bind_tools(tools)
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     
-system_prompt = """
+system_prompt = f"""
 You are an intelligent AI assistant that answers questions about public health conferences and helps users plan sessions using data from a ChromaDB-backed knowledge base.
 
 Always respond ONLY to the user's **most recent message**. Ignore prior user inputs unless they are referenced again.
@@ -267,18 +263,18 @@ Use this when the user's most RECENT question asks about specific conference ses
 **Call Example**:
 
 Question: What sessions on covid are there on March 22 at the naccho conference?
-{
+{{
   "name": "retriever_tool",
-  "args": {
+  "args": {{
     "query": "COVID-19, coronavirus, 2025-03-22, NACCHO360 2025"
-  }
-}
+  }}
+}}
 
 **Search Tips**:
 - Use ~3-5 keywords, not full sentences
 - Include date, topic, or speaker names if relevant
 - When responding to the user, supply a short summary of each session you provide.
-- When searching for sessions from a conference from the following list, make sure your query is written EXACTLY as it is in these quotes: ["APhA 2025", "NACCHO360 2025", "CHI Community Health Conference & Expo 2025"]
+- When searching for sessions from a conference from the following list, make sure your query is written EXACTLY as it is in this list - {st.session_state["conference_list"]}. 
 
 ---
 
@@ -288,14 +284,14 @@ ONLY use if the user explicitly asks you to find a speaker's LinkedIn OR if you 
 Use the **name, title, and institution** of the presenter.
 
 **Example call**:
-{
+{{
   "name": "linkedin_search_tool",
-  "args": {
+  "args": {{
     "name": "Jake Paccione",
     "title": "Undergraduate Research Assistant",
     "institution": "Stevens Institute of Technology"
-  }
-}
+  }}
+}}
 
 If no result is found, reply:  
 > "I couldn't find a LinkedIn profile for [name]."
@@ -307,12 +303,12 @@ ONLY use if a user asks for a summary or relevant topics at a specific conferenc
 **Call Example**:
 
 Question: Tell me about the APhA 2025 Conference.
-{
+{{
   "name": "desc_search_tool",
-  "args": {
+  "args": {{
     "conference": "APhA 2025 Conference"
-  }
-}
+  }}
+}}
 
 
 
@@ -323,7 +319,7 @@ Inputs are structured as follows:
 
 table_tool(
     [
-        {
+        {{
             "names": "Anandi Law; Evelyn Kim; Lord Sarino; Micah Hata; Skai Pan",
             "professional_titles": "President, AACP; Associate Dean for Assessment, College of Pharmacy, Western University of Health Sciences;",
             "institution": "Western Health Sciences",
@@ -331,8 +327,8 @@ table_tool(
             "title": "Technician Roles in Vaccinations: Impact of California Immunization Registry Access on Vaccine Co‐Administration Rates in Community Pharmacies",
             "dtl": "March 22 \n 1:00 PM - 3:00 PM \n Exhibit Hall D - Music City Center",
             "bio": "https://www.linkedin.com/in/anandi-law-6548b25/"
-        },
-        {
+        }},
+        {{
             "names": "Abby Roth",
             "professional_titles": "Founder/Microbiologist",
             "institution": "Pure Microbiology",
@@ -340,7 +336,7 @@ table_tool(
             "title": "BCSCP - K.I.S.S.: Know Important Sampling Standards",
             "dtl": "March 20 \n 8:15 AM - 9:15 AM \n 101AB - Music City Center",
             "bio": "https://www.linkedin.com/in/abbyroth/"
-        }
+        }}
     ]
 )
 
@@ -441,8 +437,62 @@ def running_agent():
     <hr style='border: none; border-top: 2px solid #ccc; margin-top: 10px; margin-bottom: 50px;' />
     """, unsafe_allow_html=True)
 
-    if "messages" not in st.session_state:
-        st.session_state["messages"] = []
+    with st.sidebar:
+        gemini_api_key = st.text_input(label="Google Gemini API Key:",type="password", icon=":material/passkey:", key="gemini_key")
+        tavily_api_key = st.text_input(label="Tavily API Key:",type="password", icon=":material/passkey:", key="tavily_key")
+
+        if not gemini_api_key or not tavily_api_key:
+            st.warning("Please enter both API keys to continue.")
+            st.stop()
+
+        os.environ["GOOGLE_API_KEY"] = gemini_api_key
+        os.environ["TAVILY_API_KEY"] = tavily_api_key
+
+
+        if gemini_api_key and tavily_api_key:
+            if "messages" not in st.session_state:
+                st.session_state["messages"] = []
+
+            if "latest_file_name" not in st.session_state:
+                st.session_state["latest_file_name"] = None
+
+            uploaded_file = st.file_uploader("Upload a Conference PDF:", type=["pdf"])
+
+            if uploaded_file and uploaded_file.name != st.session_state.latest_file_name:
+
+                conference_title = st.text_input(label="Please input the Conference Title:", key="title")
+                conference_year = st.text_input(label="Please input the Conference Year:", key="year")
+
+                if conference_title and conference_year:
+                    print("Adding to database!")
+                    reader = PdfReader(uploaded_file)
+
+                    full_chunks = []
+                    for page in reader.pages:
+                        text = page.extract_text()
+                        chunk = f"""
+                        Conference: {conference_title}
+                        Year: {conference_year}
+
+                        {text}
+                        """
+                        full_chunks.append(chunk)
+                    if full_chunks:
+                        embeddings = add_csv_to_chroma.embedder.encode(full_chunks)
+                        add_csv_to_chroma.collection.add(
+                            documents=full_chunks,
+                            embeddings=embeddings,
+                            ids=[str(uuid.uuid4()) for i in range(len(full_chunks))],
+                            metadatas=[{"conference": conference_title} for _ in full_chunks]
+                        )
+                    st.session_state["conference_list"].append(conference_title)
+                    print(f"Database population from {conference_title} complete.")
+                    print(st.session_state["conference_list"])
+                    
+
+                    st.success("File uploaded!")
+                    st.session_state.latest_file_name = uploaded_file.name
+                    
 
     for msg in st.session_state["messages"]:
         role = "user" if isinstance(msg, HumanMessage) else "assistant"

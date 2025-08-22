@@ -3,6 +3,9 @@ from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, To
 import pandas as pd
 from io import StringIO
 import streamlit.components.v1 as components
+import pymupdf
+from pypdf import PdfReader
+import add_csv_to_chroma
 
 
 def main():
@@ -23,7 +26,39 @@ def main():
         st.session_state["messages"] = []
 
     with st.sidebar:
-        uploaded_file = st.file_uploader("Upload a Conference PDF:", type=["pdf"], )
+        api_key = st.text_input(label="Google Gemini API Key:",type="password", icon=":material/passkey:")
+
+        uploaded_file = st.file_uploader("Upload a Conference PDF:", type=["pdf"])
+
+        if uploaded_file:
+
+            conference_title = st.text_input(label="Please input the Conference Title:")
+            conference_year = st.text_input(label="Please input the Conference Year:")
+
+            if conference_title and conference_year:
+                reader = PdfReader(uploaded_file)
+
+                full_chunks = []
+                for page in reader.pages:
+                    text = page.extract_text()
+                    chunk = f"""
+Conference: {conference_title}
+Year: {conference_year}
+
+{text}
+                    """
+                    full_chunks.append(chunk)
+                if full_chunks:
+                    embeddings = add_csv_to_chroma.embedder.encode(full_chunks)
+                    add_csv_to_chroma.collection.add(
+                        documents=full_chunks,
+                        embeddings=embeddings,
+                        ids=[f"session_{i}" for i in range(len(full_chunks))],
+                        metadatas=[{"conference": conference_title} for _ in full_chunks]
+                    )
+                print(f"Database population from {conference_title} complete.")
+
+                st.success("File uploaded!")
 
     for msg in st.session_state["messages"]:
         role = "user" if isinstance(msg, HumanMessage) else "assistant"
@@ -60,7 +95,53 @@ def main():
 
         st.session_state["messages"].append(AIMessage(content=user_input))
 
-    if uploaded_file:
-        st.success("File uploaded!")
-
 main()
+
+
+
+# PymuPDF
+
+#         def flags_decomposer(flags):
+#             """Make font flags human readable."""
+#             l = []
+#             if flags & 2 ** 0:
+#                 l.append("superscript")
+#             if flags & 2 ** 1:
+#                 l.append("italic")
+#             if flags & 2 ** 2:
+#                 l.append("serifed")
+#             else:
+#                 l.append("sans")
+#             if flags & 2 ** 3:
+#                 l.append("monospaced")
+#             else:
+#                 l.append("proportional")
+#             if flags & 2 ** 4:
+#                 l.append("bold")
+#             return ", ".join(l)
+
+        
+#         uploaded_file = st.file_uploader("Upload a Conference PDF:", type=["pdf"])
+
+#         if uploaded_file:
+#             bytes = uploaded_file.read()
+
+#             doc = pymupdf.open(stream=bytes, filetype="pdf")
+#             page = doc[0]
+
+#             # read page text as a dictionary, suppressing extra spaces in CJK fonts
+#             blocks = page.get_text("dict", flags=11)["blocks"]
+#             for b in blocks:  # iterate through the text blocks
+#                 for l in b["lines"]:  # iterate through the text lines
+#                     for s in l["spans"]:  # iterate through the text spans
+#                         print("")
+#                         if (s["text"]) == ' ':
+#                             continue
+#                         font_properties = "Font: '%s' (%s), size %g, color #%06x" % (
+#                             s["font"],  # font name
+#                             flags_decomposer(s["flags"]),  # readable font flags
+#                             s["size"],  # font size
+#                             s["color"],  # font color
+#                         )
+#                         print("Text: '%s'" % s["text"])  # simple print of text
+#                         print(font_properties)
